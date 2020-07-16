@@ -417,7 +417,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     }
 
     canvas.addEventListener("keypress", (event) => {
-        if (event.keyCode === 32) {
+        if (event.keyCode === 27) {
             if (gameStatusData.stopped) {
                 console.log("resumed")
                 resumeGame();
