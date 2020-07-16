@@ -75,7 +75,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 (asteroid.y + asteroid.img.height > spaceShip.y &&
                     asteroid.y < spaceShip.y + spaceShip.img.height)) {
                 gameOver();
-                gameStatusData.stopped = true;
                 return;
             }
         });
@@ -197,6 +196,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
         // decrement fuel quantity at each frame
         gameStatusData.fuelQuantity -= .1;
+
+        // end game if ship has ran out of fuel
+        if (gameStatusData.fuelQuantity <= 0) {
+            gameOver();
+        }
     }
 
     const drawBackground = (isResized) => {
@@ -358,7 +362,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
     }
 
     let gameOver = () => {
-        console.log('collision');
+        gameStatusData.stopped = true;
+        gameStatusData.score = 0;
         gameOverModal.classList.add('active');
         window.cancelAnimationFrame(gameStatusData.mainAnimationFrameId);
     }
