@@ -58,8 +58,19 @@ window.addEventListener('DOMContentLoaded', (event) => {
         starsSlidingInterval: 200,
         fuelCapacity: 120,
         fuelQuantity: 100,
-        score: 0
+        score: 0,
+        highScore: 0
     };
+
+    // check browser support
+    if (typeof (Storage) !== "undefined") {
+
+        // set high score from local storage if available
+        gameStatusData.highScore = localStorage.getItem("highScore") || 0;
+
+    } else {
+        gameStatusData.highScore = null;
+    }
 
     // main game routine
     const draw = () => {
@@ -172,10 +183,15 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const drawScore = () => {
         context.fillStyle = 'white';
         context.font = "24px monospace";
-        context.fillText(gameStatusData.score, 20, 85);
+        context.fillText("Score: " + gameStatusData.score, 20, 65);
+        if (gameStatusData.highScore)
+            context.fillText("High score: " + gameStatusData.highScore, 20, 90);
 
         // increment score at each frame
         gameStatusData.score += 1; // TODO: use a exponential funtion insead
+        if (gameStatusData.score > gameStatusData.highScore) {
+            gameStatusData.highScore = gameStatusData.score;
+        }
     }
 
 
@@ -190,7 +206,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             context.fillStyle = 'red';
         }
         context.beginPath();
-        context.rect(20, 40, gameStatusData.fuelQuantity, 20);
+        context.rect(20, 20, gameStatusData.fuelQuantity, 20);
         context.stroke();
         context.fill();
 
@@ -229,7 +245,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             context.fill();
 
             // execute game environment subrutines
-            drawStars();
+            // drawStars();
             drawAsteroids();
             drawFuelTanks();
             drawFuelBar();
@@ -366,6 +382,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
         gameStatusData.score = 0;
         gameOverModal.classList.add('active');
         window.cancelAnimationFrame(gameStatusData.mainAnimationFrameId);
+        if (gameStatusData.highScore) {
+            localStorage.setItem("highScore", gameStatusData.highScore);
+        }
     }
 
     let restartGame = () => {
