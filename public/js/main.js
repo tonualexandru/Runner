@@ -1,10 +1,38 @@
+// add support for different browsers
+const requestAnimationFrame =
+    window.requestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.webkitRequestAnimationFrame ||
+    window.msRequestAnimationFrame;
+
+const cancelAnimationFrame =
+    window.cancelAnimationFrame ||
+    window.mozCancelAnimationFrame;
+
+
+// utulity to toggle active states of a node element
+toggleClassName = (target, className) => {
+    if (typeof className === undefined)
+        className = 'active';
+
+    if (target.className.indexOf(className) == -1) {
+        target.classList.remove(className);
+    } else {
+        target.classList.add(className);
+    }
+}
+
+
+// execute code when DOM was fully loaded
 window.addEventListener('DOMContentLoaded', (event) => {
+
+    // initiate globals
     const canvas = document.querySelector('.wrapper canvas'),
         context = canvas.getContext('2d');
 
-    const stars = [];
-    const asteroids = [];
-    const fuelTanks = [];
+    let stars = [];
+    let asteroids = [];
+    let fuelTanks = [];
 
     const spaceShip = {
         img: new Image(),
@@ -12,30 +40,76 @@ window.addEventListener('DOMContentLoaded', (event) => {
         y: canvas.clientHeight / 2,
     }
 
+    const gameOverModal = document.querySelector('#gameOverModal');
+    const tryAgainBtn = document.querySelector('#tryAgainBtn');
+    const goHomeBtn = document.querySelector('#goHomeBtn');
+
+    tryAgainBtn.onclick = () => {
+        gameOverModal.classList.remove('active');
+        restartGame();
+    }
+
+    // game status structure
+    const gameStatusData = {
+        mainAnimationFrameId: 0,
+        stopped: false,
+        asteroidsSlidingInterval: 100,
+        fuelTanksSlidingInterval: 100,
+        starsSlidingInterval: 200,
+        fuelCapacity: 120,
+        fuelQuantity: 100,
+        score: 0
+    };
+
+    // main game routine
     const draw = () => {
+        if (gameStatusData.stopped)
+            return;
+
+
+        // check for collision with asteroids
         asteroids.forEach(asteroid => {
             if (
                 (asteroid.x < spaceShip.x + spaceShip.img.width &&
                     asteroid.x + asteroid.img.width > spaceShip.x) &&
                 (asteroid.y + asteroid.img.height > spaceShip.y &&
                     asteroid.y < spaceShip.y + spaceShip.img.height)) {
-                console.log("collision")
+                gameOver();
+                gameStatusData.stopped = true;
+                return;
             }
         });
+
+        // check for collision with fuel tanks
         fuelTanks.forEach(fuelTank => {
             if (
                 (fuelTank.x < spaceShip.x + spaceShip.img.width &&
                     fuelTank.x + fuelTank.img.width > spaceShip.x) &&
                 (fuelTank.y + fuelTank.img.height > spaceShip.y &&
                     fuelTank.y < spaceShip.y + spaceShip.img.height)) {
-                console.log("fulfiled")
+                tankUp(fuelTank);
             }
         });
+
+        // draw space ship image
         context.drawImage(spaceShip.img, spaceShip.x, spaceShip.y);
-        requestAnimationFrame(draw);
+        gameStatusData.mainAnimationFrameId = window.requestAnimationFrame(draw);
     }
 
     const init = () => {
+
+        // set initial values after a game restart
+        stars = [];
+        asteroids = [];
+        fuelTanks = [];
+        gameStatusData.fuelQuantity = 100;
+        spaceShip.x = 60;
+        spaceShip.y = canvas.clientHeight / 2;
+
+
+        // focus on canvas so user will be able to play instantly
+        canvas.focus();
+
         const ctxWidth = window.innerWidth,
             ctxHeight = window.innerHeight;
 
@@ -46,6 +120,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
         fuelTankImg.src = '../assets/fuel_tank.gif';
         spaceShip.img.src = '../assets/spaceship.png';
 
+
+        // draw stars on random spots
         for (let i = 0; i < 100; i++) {
             stars.push({
                 size: 0 | Math.random() * 3 + 1,
@@ -56,6 +132,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 stars[i].isClose = true;
         }
 
+        // draw asteroids on random spots
         for (let i = 0; i < 5; i++) {
             asteroids.push({
                 img: asteroidImg,
@@ -64,6 +141,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             });
         }
 
+        // draw fuel tanks on random spots
         for (let i = 0; i < 2; i++) {
             fuelTanks.push({
                 img: fuelTankImg,
@@ -74,40 +152,92 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
         drawBackground(true);
 
+        // start to draw only when the heaviest image was loaded
         spaceShip.img.onload = () => {
             draw();
         }
     }
 
-    const drawBackground = (isResized) => {
-        const ctxHeight = window.innerHeight,
-            ctxWidth = window.innerWidth,
-            background = context.createLinearGradient(0, 0, 0, ctxHeight * 2);
+    const tankUp = (fuelTank) => {
+        gameStatusData.fuelQuantity += 10;
 
-        if (isResized) {
-            canvas.setAttribute("width", ctxWidth);
-            canvas.setAttribute("height", ctxHeight);
+        // avoid exceeding tank capacity
+        if (gameStatusData.fuelQuantity > gameStatusData.fuelCapacity)
+            gameStatusData.fuelQuantity = gameStatusData.fuelCapacity;
+
+        // place consumed tank at a new position
+        fuelTank.x = window.innerWidth + 100
+        fuelTank.y = 0 | Math.random() * window.innerHeight
+    }
+
+    const drawScore = () => {
+        context.fillStyle = 'white';
+        context.font = "24px monospace";
+        context.fillText(gameStatusData.score, 20, 85);
+
+        // increment score at each frame
+        gameStatusData.score += 1; // TODO: use a exponential funtion insead
+    }
+
+
+    const drawFuelBar = () => {
+
+        // set fuel bar color according to the amount of fuel left
+        if (gameStatusData.fuelQuantity > 70) {
+            context.fillStyle = 'green';
+        } else if (gameStatusData.fuelQuantity > 30) {
+            context.fillStyle = 'yellow';
+        } else {
+            context.fillStyle = 'red';
         }
-
-        context.clearRect(0, 0, ctxWidth, ctxHeight);
-
-        background.addColorStop(0, "#141418");
-        background.addColorStop(1, "#2b2551");
-
-        context.rect(0, 0, ctxWidth, ctxHeight);
-        context.fillStyle = background;
+        context.beginPath();
+        context.rect(20, 40, gameStatusData.fuelQuantity, 20);
+        context.stroke();
         context.fill();
 
-        drawStars();
-        drawAsteroids();
-        drawFuelTanks();
+        // decrement fuel quantity at each frame
+        gameStatusData.fuelQuantity -= .1;
+    }
+
+    const drawBackground = (isResized) => {
+
+        // stop from drawing the game environment when game is stoped
+        if (!gameStatusData.stopped) {
+
+            const ctxHeight = window.innerHeight,
+                ctxWidth = window.innerWidth,
+                background = context.createLinearGradient(0, 0, 0, ctxHeight * 2);
+
+
+            // canvas should be rerendered if function was called because of a winddow resize
+            if (isResized) {
+                canvas.setAttribute('width', ctxWidth);
+                canvas.setAttribute('height', ctxHeight);
+            }
+
+            context.clearRect(0, 0, ctxWidth, ctxHeight);
+
+            background.addColorStop(0, '#141418');
+            background.addColorStop(1, '#2b2551');
+
+            context.rect(0, 0, ctxWidth, ctxHeight);
+            context.fillStyle = background;
+            context.fill();
+
+            // execute game environment subrutines
+            drawStars();
+            drawAsteroids();
+            drawFuelTanks();
+            drawFuelBar();
+            drawScore();
+        }
     }
 
     const drawStars = () => {
         context.strokeStyle = 'white';
         context.lineWidth = 1;
         context.shadowBlur = 10;
-        context.shadowColor = "white";
+        context.shadowColor = 'white';
 
         for (star of stars) {
             context.moveTo(star.x, star.y);
@@ -120,6 +250,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             context.stroke();
         }
 
+        // remove blur so only stars will glow
         context.shadowBlur = 0;
     }
 
@@ -174,7 +305,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 star.x -= 0.5;
         });
         drawBackground()
-    }, 200);
+    }, gameStatusData.starsSlidingInterval);
 
 
     const slideAsteroids = setInterval(() => {
@@ -185,7 +316,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             } else asteroid.x -= 10;
         });
         drawBackground()
-    }, 100);
+    }, gameStatusData.asteroidsSlidingInterval);
 
     const slideFuelTanks = setInterval(() => {
         fuelTanks.forEach(fuelTank => {
@@ -195,8 +326,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
             } else fuelTank.x -= 10;
         });
         drawBackground()
-    }, 100);
+    }, gameStatusData.fuelTanksSlidingInterval);
 
+
+    // handle user commands to move space ship
     document.addEventListener('keydown', (event) => {
         switch (event.keyCode) {
             case 37:
@@ -218,8 +351,21 @@ window.addEventListener('DOMContentLoaded', (event) => {
         drawBackground();
     })
 
+
     init();
     window.onresize = () => {
         drawBackground(true);
+    }
+
+    let gameOver = () => {
+        console.log('collision');
+        gameOverModal.classList.add('active');
+        window.cancelAnimationFrame(gameStatusData.mainAnimationFrameId);
+    }
+
+    let restartGame = () => {
+        init();
+        gameStatusData.mainAnimationFrameId = window.requestAnimationFrame(draw);
+        gameStatusData.stopped = false
     }
 });
