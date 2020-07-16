@@ -40,14 +40,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
         y: canvas.clientHeight / 2,
     }
 
-    const gameOverModal = document.querySelector('#gameOverModal');
-    const tryAgainBtn = document.querySelector('#tryAgainBtn');
+    const gameDialogModal = document.querySelector('#gameDialogModal');
+    const actionBtn = document.querySelector('#actionBtn');
     const goHomeBtn = document.querySelector('#goHomeBtn');
-
-    tryAgainBtn.onclick = () => {
-        gameOverModal.classList.remove('active');
-        restartGame();
-    }
 
     // game status structure
     const gameStatusData = {
@@ -377,19 +372,58 @@ window.addEventListener('DOMContentLoaded', (event) => {
         drawBackground(true);
     }
 
+    const resumeGame = (title) => {
+        gameStatusData.mainAnimationFrameId = window.requestAnimationFrame(draw);
+        gameStatusData.stopped = false;
+        pauseBtn.classList.remove('active');
+        gameDialogModal.classList.remove("active");
+
+        if (title == "Game over!") {
+            init();
+        }
+        canvas.focus();
+    }
+
+    // utility to create dialogs
+    const openDialog = (title, action) => {
+        gameDialogModal.classList.add('active');
+        gameDialogModal.querySelector("span").innerText = title;
+        actionBtn.innerText = action;
+
+        actionBtn.onclick = () => {
+            resumeGame(title);
+        }
+    }
+
     let gameOver = () => {
         gameStatusData.stopped = true;
         gameStatusData.score = 0;
-        gameOverModal.classList.add('active');
+        openDialog("Game over!", "Try again")
         window.cancelAnimationFrame(gameStatusData.mainAnimationFrameId);
         if (gameStatusData.highScore) {
             localStorage.setItem("highScore", gameStatusData.highScore);
         }
     }
 
-    let restartGame = () => {
-        init();
-        gameStatusData.mainAnimationFrameId = window.requestAnimationFrame(draw);
-        gameStatusData.stopped = false
+    const pauseGame = () => {
+        gameStatusData.stopped = true;
+        openDialog("Game paused", "Continue");
+        pauseBtn.classList.add('active');
     }
+
+    const pauseBtn = document.querySelector("#pauseBtn");
+    pauseBtn.onclick = () => {
+        pauseGame();
+    }
+
+    canvas.addEventListener("keypress", (event) => {
+        if (event.keyCode === 32) {
+            if (gameStatusData.stopped) {
+                console.log("resumed")
+                resumeGame();
+            } else {
+                pauseGame();
+            }
+        }
+    });
 });
