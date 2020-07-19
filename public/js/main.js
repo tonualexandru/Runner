@@ -377,29 +377,31 @@ window.addEventListener('DOMContentLoaded', (event) => {
     // handle user commands to move space ship
     let maneuver = 0;
     document.addEventListener('keydown', (event) => {
-        switch (event.keyCode) {
-            case 37:
-                maneuverLeft()
-                break;
-            case 38:
-                maneuverUp()
-                break;
-            case 39:
-                maneuverRight()
-                break;
-            case 40:
-                maneuverDown()
-                break;
-            default:
-                break;
+        if (!gameStatusData.stopped) {
+            switch (event.keyCode) {
+                case 37:
+                    maneuverLeft()
+                    break;
+                case 38:
+                    maneuverUp()
+                    break;
+                case 39:
+                    maneuverRight()
+                    break;
+                case 40:
+                    maneuverDown()
+                    break;
+                default:
+                    break;
+            }
+            if (gameStatusData.soundOn && event.keyCode >= 37 && event.keyCode <= 40) {
+                if (maneuver >= 9)
+                    maneuver = 0;
+                maneuverAudio[maneuver++].play()
+                    .catch(err => console.log(err))
+            }
+            drawBackground();
         }
-        if (gameStatusData.soundOn && event.keyCode >= 37 && event.keyCode <= 40) {
-            if (maneuver >= 9)
-                maneuver = 0;
-            maneuverAudio[maneuver++].play()
-                .catch(err => console.log(err))
-        }
-        drawBackground();
     })
 
 
