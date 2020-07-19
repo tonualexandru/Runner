@@ -11,11 +11,11 @@ const cancelAnimationFrame =
 
 
 // utulity to toggle active states of a node element
-toggleClassName = (target, className) => {
-    if (typeof className === undefined)
+const toggleClassName = (target, className) => {
+    if (typeof className === "undefined")
         className = 'active';
 
-    if (target.className.indexOf(className) == -1) {
+    if (target.className.indexOf(className) !== -1) {
         target.classList.remove(className);
     } else {
         target.classList.add(className);
@@ -30,6 +30,26 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.querySelector('.wrapper canvas'),
         context = canvas.getContext('2d');
 
+    // environment sound
+    const envAudio = new Audio('../assets/audio/env.mp3');
+
+    // button click sound
+    const buttonAudio = new Audio('../assets/audio/button.mov');
+
+    // collision sound
+    const collisionAudio = new Audio('../assets/audio/collision.mp3');
+
+    // fuelling up sound
+    const fuellingAudio = new Audio('../assets/audio/fuelling.mp3');
+
+    // spaceship making a maneuver
+    const maneuverAudio = [];
+    for (let i = 0; i < 10; i++)
+        maneuverAudio.push(new Audio('../assets/audio/spaceship.mov'));
+
+    const audioBtn = document.querySelector("#audioBtn");
+
+    // space objects arrays
     let stars = [];
     let asteroids = [];
     let fuelTanks = [];
@@ -54,7 +74,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
         fuelCapacity: 120,
         fuelQuantity: 100,
         score: 0,
-        highScore: 0
+        highScore: 0,
+        soundOn: false
     };
 
     // check browser support
@@ -81,6 +102,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 (asteroid.y + asteroid.img.height > spaceShip.y &&
                     asteroid.y < spaceShip.y + spaceShip.img.height)) {
                 gameOver();
+                if (gameStatusData.soundOn) {
+                    collisionAudio.play()
+                        .catch(err => console.log(err))
+                }
+
                 return;
             }
         });
@@ -93,6 +119,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 (fuelTank.y + fuelTank.img.height > spaceShip.y &&
                     fuelTank.y < spaceShip.y + spaceShip.img.height)) {
                 tankUp(fuelTank);
+                if (gameStatusData.soundOn) {
+                    fuellingAudio.play()
+                        .catch(err => console.log(err))
+                }
             }
         });
 
@@ -121,9 +151,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
         const asteroidImg = new Image(),
             fuelTankImg = new Image();
 
-        asteroidImg.src = '../assets/asteroid.png';
-        fuelTankImg.src = '../assets/fuel_tank.gif';
-        spaceShip.img.src = '../assets/spaceship.png';
+        asteroidImg.src = '../assets/images/asteroid.png';
+        fuelTankImg.src = '../assets/images/fuel_tank.gif';
+        spaceShip.img.src = '../assets/images/spaceship.png';
 
 
         // draw stars on random spots
@@ -345,6 +375,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
 
     // handle user commands to move space ship
+    let maneuver = 0;
     document.addEventListener('keydown', (event) => {
         switch (event.keyCode) {
             case 37:
@@ -362,7 +393,12 @@ window.addEventListener('DOMContentLoaded', (event) => {
             default:
                 break;
         }
-
+        if (gameStatusData.soundOn && event.keyCode >= 37 && event.keyCode <= 40) {
+            if (maneuver >= 9)
+                maneuver = 0;
+            maneuverAudio[maneuver++].play()
+                .catch(err => console.log(err))
+        }
         drawBackground();
     })
 
@@ -386,11 +422,19 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     // utility to create dialogs
     const openDialog = (title, action) => {
+        envAudio.volume = 1;
         gameDialogModal.classList.add('active');
         gameDialogModal.querySelector("span").innerText = title;
         actionBtn.innerText = action;
 
         actionBtn.onclick = () => {
+
+            // emit button pressing sound
+            if (gameStatusData.soundOn) {
+                buttonAudio.play()
+                    .catch(err => console.log(err))
+            }
+            envAudio.volume = 0.8;
             resumeGame(title);
         }
     }
@@ -413,6 +457,12 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     const pauseBtn = document.querySelector("#pauseBtn");
     pauseBtn.onclick = () => {
+
+        // emit button pressing sound
+        if (gameStatusData.soundOn) {
+            buttonAudio.play()
+                .catch(err => console.log(err))
+        }
         pauseGame();
     }
 
@@ -426,4 +476,33 @@ window.addEventListener('DOMContentLoaded', (event) => {
             }
         }
     });
+
+    // play sounds on user prompt
+    audioBtn.onclick = () => {
+
+        // emit button pressing sound
+        buttonAudio.play()
+            .catch(err => console.log(err))
+
+        if (!gameStatusData.soundOn) {
+            gameStatusData.soundOn = true;
+            envAudio.play()
+
+                // loop env sounds
+                .then(envAudio.onended = () => {
+                    envAudio.play()
+                })
+                .catch(err => console.log(err))
+        } else {
+            try {
+                gameStatusData.soundOn = false;
+                envAudio.pause()
+            } catch (err) {
+                console.log(err)
+            }
+        }
+
+        // togle active state of audio button
+        toggleClassName(audioBtn);
+    }
 });
